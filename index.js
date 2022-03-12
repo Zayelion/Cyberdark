@@ -9,6 +9,7 @@ const {
   CYBERNETIC_HORIZON,
   CYBERDARK_REALM,
   CYBERDARK_CLAW,
+  CYBERDARK_CANNON,
   CYBER_ARCHETYPE,
   CYBERDARK_ARCHETYPE,
   MACHINE,
@@ -16,7 +17,6 @@ const {
 } = require('./keyCards.json');
 
 const loadedDatabase = require('./database.json');
-
 
 function reduceCardDB(hash, item) {
   item.links = item.links || [];
@@ -284,12 +284,57 @@ function containsCyberdarkClaw(hand) {
   });
 }
 
+function containsPseudoComponents(hand) {
+  return hand.some(card => {
+    return card.id === CYBERDARK_CLAW || card.id === CYBERNETIC_HORIZON || card.id === CYBERDARK_REALM || card.id === CYBERDARK_CANNON;
+  });
+}
+
 function containsExtraCyberdark(hand) {
   const cybers = hand.filter(card => filterSetcode(card, CYBER_ARCHETYPE));
   const cyberdarks = hand.filter(card =>
     checkIsFormOfCyber(card, CYBERDARK_ARCHETYPE)
   );
   return cybers.legnth >= 2 && cyberdarks.legnth;
+}
+
+function canSiegerCombo(starter, deck, hand) {
+  if (
+    starter.id === CYBER_DRAGON_CORE ||
+    starter.id === CYBER_EMERGENCY ||
+    starter.id === CYBERNETIC_HORIZON
+  ) {
+    const isPowerBondInDeck = checkPowerBond(deck);
+    const hasSpellTrap = containsSpellOrTrap(hand);
+    const hasSpareCyber = containsCyberMonster(hand, CYBER_ARCHETYPE);
+
+    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
+  }
+  return false;
+}
+
+function canClawCombo(starter, deck, hand) {
+  if (starter.id === CYBERDARK_REALM) {
+    const isPowerBondInDeck = checkPowerBond(deck);
+    const hasSpellTrap = containsSpellOrTrap(hand);
+    const hasSpareCyber =
+      containsCyberdarkClaw(hand) || containsExtraCyberdark(hand);
+
+    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
+  }
+  return false;
+}
+
+function canPseudoCombo(starter, deck, hand) {
+  if (starter.id === CYBER_DRAGON_CORE || starter.id === CYBER_EMERGENCY) {
+    const isPowerBondInDeck = checkPowerBond(deck);
+    const hasSpellTrap = containsSpellOrTrap(hand);
+    const hasSpareCyber = containsPseudoComponents(hand);
+
+    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
+  }
+
+  return false;
 }
 
 function canComboCyberEndDragonWithCore(list) {
@@ -300,30 +345,11 @@ function canComboCyberEndDragonWithCore(list) {
     return false;
   }
 
-  if (
-    card.id === CYBER_DRAGON_CORE ||
-    card.id === CYBER_EMERGENCY ||
-    card.id === CYBERNETIC_HORIZON
-  ) {
-    const isPowerBondInDeck = checkPowerBond(deck);
-    const hasSpellTrap = containsSpellOrTrap(handSansStarter);
-    const hasSpareCyber = containsCyberMonster(
-      handSansStarter,
-      CYBER_ARCHETYPE
-    );
+  const hasSiegerCombo = canSiegerCombo(card, deck, handSansStarter);
+  const hasClawCombo = canClawCombo(card, deck, handSansStarter);
+  const hasPseudoCombo = canPseudoCombo(card, deck, handSansStarter);
 
-    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
-  }
-
-  if (card.id === CYBERDARK_REALM) {
-    const isPowerBondInDeck = checkPowerBond(deck);
-    const hasSpellTrap = containsSpellOrTrap(handSansStarter);
-    const hasSpareCyber =
-      containsCyberdarkClaw(handSansStarter) ||
-      containsExtraCyberdark(handSansStarter);
-
-    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
-  }
+  return hasSiegerCombo || hasClawCombo || hasPseudoCombo;
 }
 
 async function testCyberEndDragonWithCore(fileName, tries = 250) {
