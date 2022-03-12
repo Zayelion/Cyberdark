@@ -2,12 +2,16 @@ const fs = require('fs').promises;
 const path = require('path');
 const { program } = require('commander');
 
-const POWER_BOND = 37630732;
-const CYBER_DRAGON_CORE = 23893227;
-const CYBER_EMERGENCY = 60600126;
-const CYBER_ARCHETYPE = 0x93;
-const MACHINE = 32;
-const DRAGON = 8192;
+const {
+  POWER_BOND,
+  CYBER_DRAGON_CORE,
+  CYBER_EMERGENCY,
+  CYBERDARK_REALM,
+  CYBERDARK_CLAW,
+  CYBER_ARCHETYPE,
+  MACHINE,
+  DRAGON
+} = require('./keyCards.json');
 
 const loadedDatabase = require('./database.json');
 
@@ -131,22 +135,23 @@ function makeDeckfromydk(ydkFileContents) {
  * @returns {void}
  */
 function deepShuffle(array) {
-  let currentIndex = array.length,  randomIndex;
+  let currentIndex = array.length,
+    randomIndex;
 
   // While there remain elements to shuffle...
   while (currentIndex != 0) {
-
     // Pick a remaining element...
     randomIndex = Math.floor(Math.random() * currentIndex);
     currentIndex--;
 
     // And swap it with the current element.
     [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex], array[currentIndex]];
+      array[randomIndex],
+      array[currentIndex],
+    ];
   }
 
   return array;
-
 }
 
 // draw 5
@@ -235,9 +240,12 @@ function isType(card, type) {
 }
 
 function identifyStarter(hand) {
-  const index = hand.findIndex(card => {
-    card.id === CYBER_DRAGON_CORE || card === CYBER_EMERGENCY;
-  });
+  const index = hand.findIndex(
+    card =>
+      card.id === CYBER_DRAGON_CORE ||
+      card.id === CYBER_EMERGENCY ||
+      card.id === CYBERDARK_REALM
+  );
 
   return index !== -1
     ? {
@@ -290,17 +298,39 @@ function containsCyberMonster(hand) {
   });
 }
 
-function canCombo(list) {
-  const { hand: initialHand, deck } = drawFive(list.main);
-  const { starter, hand: handSansStarter } = getStarter(initialHand);
-  const isPowerBondInDeck = checkPowerBond(deck);
-  const hasSpellTrap = containsCyberMonster(handSansStarter);
-  const hasSpareCyber = containsSpellOrTrap(handSansStarter);
-
-  return isPowerBondInDeck && starter && hasSpellTrap && hasSpareCyber;
+function containsCyberdarkClaw(hand) {
+  return hand.some(card => {
+    return card.id === CYBERDARK_CLAW;
+  });
 }
 
-async function test(fileName, tries = 250) {
+function canComboCyberEndDragonWithCore(list) {
+  const { hand: initialHand, deck } = drawFive(list.main);
+  const { starter, card, hand: handSansStarter } = getStarter(initialHand);
+
+  if (!starter) {
+    return false;
+  }
+
+  if (card.id === CYBER_DRAGON_CORE || card.id === CYBER_EMERGENCY) {
+    const isPowerBondInDeck = checkPowerBond(deck);
+    const hasSpellTrap = containsSpellOrTrap(handSansStarter);
+    const hasSpareCyber = containsCyberMonster(handSansStarter);
+
+    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
+  }
+
+  if (card.id === CYBERDARK_REALM) {
+    const isPowerBondInDeck = checkPowerBond(deck);
+    const hasSpellTrap = containsSpellOrTrap(handSansStarter);
+    const hasCyberdarkClaw = containsCyberdarkClaw(handSansStarter);
+
+    return isPowerBondInDeck && hasSpellTrap && hasCyberdarkClaw;
+  }
+}
+
+
+async function testCyberEndDragonWithCore(fileName, tries = 250) {
   const file = await readDeckFromFile(fileName);
   const deck = importDeck(file);
 
@@ -308,7 +338,7 @@ async function test(fileName, tries = 250) {
   let failures = 0;
 
   for (let i = 0; i < tries; i++) {
-    const madeCombo = canCombo(deck);
+    const madeCombo = canComboCyberEndDragonWithCore(deck);
     if (madeCombo) {
       successes++;
     } else {
@@ -329,7 +359,7 @@ async function main() {
   program.parse();
 
   const options = program.opts();
-  const { successes, failures, percentage } = await test(
+  const { successes, failures, percentage } = await testCyberEndDragonWithCore(
     options.deck,
     options.tries
   );
