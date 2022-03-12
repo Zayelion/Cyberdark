@@ -6,6 +6,7 @@ const {
   POWER_BOND,
   CYBER_DRAGON_CORE,
   CYBER_EMERGENCY,
+  CYBERNETIC_HORIZON,
   CYBERDARK_REALM,
   CYBERDARK_CLAW,
   CYBER_ARCHETYPE,
@@ -32,30 +33,6 @@ function reduceCardDB(hash, item) {
   return hash;
 }
 
-async function getSetCodes() {
-  const raw = await fs.readFile('./setcodes.json', 'utf-8');
-
-  return Object.keys(raw)
-    .map(function(arch) {
-      return {
-        num: arch,
-        name: raw[arch],
-      };
-    })
-    .sort(function(a, b) {
-      return a.name.localeCompare(b.name, undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-    });
-}
-
-async function loadCardDB() {
-  const cardDB = await fs.readFile('./database.json'),
-    cardsets = cardDB.reduce(reduceCardDB, {});
-
-  return cardsets;
-}
 
 // get deck
 
@@ -67,40 +44,14 @@ function findcard(card) {
   return loadedDatabase.find(item => card.id === item.id);
 }
 
-function importDeck(file) {
-  var deck = makeDeckfromydk(file);
 
-  deck.main = deck.main
-    .map(cardid => {
-      return findcard({
-        id: parseInt(cardid, 10),
-      });
-    })
-    .filter(card => card);
-  deck.side = deck.side
-    .map(cardid => {
-      return findcard({
-        id: parseInt(cardid, 10),
-      });
-    })
-    .filter(card => card);
-  deck.extra = deck.extra
-    .map(cardid => {
-      return findcard({
-        id: parseInt(cardid, 10),
-      });
-    })
-    .filter(card => card);
-
-  return deck;
-}
 
 function makeDeckfromydk(ydkFileContents) {
   var lineSplit = ydkFileContents.split('\n'),
     originalValues = {
       main: [],
       side: [],
-      extra: [],
+      extra: []
     },
     current = '';
   lineSplit = lineSplit.map(function(item) {
@@ -127,6 +78,34 @@ function makeDeckfromydk(ydkFileContents) {
   return originalValues;
 }
 
+function importDeck(file) {
+  var deck = makeDeckfromydk(file);
+
+  deck.main = deck.main
+    .map(cardid => {
+      return findcard({
+        id: parseInt(cardid, 10)
+      });
+    })
+    .filter(card => card);
+  deck.side = deck.side
+    .map(cardid => {
+      return findcard({
+        id: parseInt(cardid, 10)
+      });
+    })
+    .filter(card => card);
+  deck.extra = deck.extra
+    .map(cardid => {
+      return findcard({
+        id: parseInt(cardid, 10)
+      });
+    })
+    .filter(card => card);
+
+  return deck;
+}
+
 // shuffle deck
 
 /**
@@ -139,7 +118,7 @@ function deepShuffle(array) {
     randomIndex;
 
   // While there remain elements to shuffle...
-  while (currentIndex != 0) {
+  while (currentIndex) {
     // Pick a remaining element...
     randomIndex = Math.floor(Math.random() * currentIndex);
     currentIndex--;
@@ -147,7 +126,7 @@ function deepShuffle(array) {
     // And swap it with the current element.
     [array[currentIndex], array[randomIndex]] = [
       array[randomIndex],
-      array[currentIndex],
+      array[currentIndex]
     ];
   }
 
@@ -163,7 +142,7 @@ function drawFive(deck) {
   const hand = deck.slice(0, 5);
   return {
     hand,
-    deck,
+    deck
   };
 }
 
@@ -171,7 +150,7 @@ function drawSix(deck) {
   const hand = deck.slice(0, 6);
   return {
     hand,
-    deck,
+    deck
   };
 }
 
@@ -244,17 +223,18 @@ function identifyStarter(hand) {
     card =>
       card.id === CYBER_DRAGON_CORE ||
       card.id === CYBER_EMERGENCY ||
-      card.id === CYBERDARK_REALM
+      card.id === CYBERDARK_REALM ||
+      card.id === CYBERNETIC_HORIZON
   );
 
   return index !== -1
     ? {
         starter: true,
-        index,
+        index
       }
     : {
         starter: false,
-        index,
+        index
       };
 }
 
@@ -269,7 +249,7 @@ function getStarter(hand) {
   return {
     starter: true,
     card: starter,
-    hand,
+    hand
   };
 }
 
@@ -312,7 +292,7 @@ function canComboCyberEndDragonWithCore(list) {
     return false;
   }
 
-  if (card.id === CYBER_DRAGON_CORE || card.id === CYBER_EMERGENCY) {
+  if (card.id === CYBER_DRAGON_CORE || card.id === CYBER_EMERGENCY || card.id === CYBERNETIC_HORIZON) {
     const isPowerBondInDeck = checkPowerBond(deck);
     const hasSpellTrap = containsSpellOrTrap(handSansStarter);
     const hasSpareCyber = containsCyberMonster(handSansStarter);
@@ -349,7 +329,7 @@ async function testCyberEndDragonWithCore(fileName, tries = 250) {
   return {
     successes,
     failures,
-    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`,
+    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`
   };
 }
 
@@ -359,11 +339,12 @@ async function main() {
   program.parse();
 
   const options = program.opts();
-  const { successes, failures, percentage } = await testCyberEndDragonWithCore(
+  const { successes, failures, percentage: CyberdarkEndDragonPercentage } = await testCyberEndDragonWithCore(
     options.deck,
     options.tries
   );
-  console.log(successes, failures, percentage);
+
+  console.log('Cyberdark End Dragon', CyberdarkEndDragonPercentage);
 }
 
 main();
