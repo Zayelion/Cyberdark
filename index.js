@@ -10,8 +10,9 @@ const {
   CYBERDARK_REALM,
   CYBERDARK_CLAW,
   CYBER_ARCHETYPE,
+  CYBERDARK_ARCHETYPE,
   MACHINE,
-  DRAGON
+  DRAGON,
 } = require('./keyCards.json');
 
 const loadedDatabase = require('./database.json');
@@ -33,7 +34,6 @@ function reduceCardDB(hash, item) {
   return hash;
 }
 
-
 // get deck
 
 async function readDeckFromFile(file) {
@@ -44,14 +44,12 @@ function findcard(card) {
   return loadedDatabase.find(item => card.id === item.id);
 }
 
-
-
 function makeDeckfromydk(ydkFileContents) {
   var lineSplit = ydkFileContents.split('\n'),
     originalValues = {
       main: [],
       side: [],
-      extra: []
+      extra: [],
     },
     current = '';
   lineSplit = lineSplit.map(function(item) {
@@ -84,21 +82,21 @@ function importDeck(file) {
   deck.main = deck.main
     .map(cardid => {
       return findcard({
-        id: parseInt(cardid, 10)
+        id: parseInt(cardid, 10),
       });
     })
     .filter(card => card);
   deck.side = deck.side
     .map(cardid => {
       return findcard({
-        id: parseInt(cardid, 10)
+        id: parseInt(cardid, 10),
       });
     })
     .filter(card => card);
   deck.extra = deck.extra
     .map(cardid => {
       return findcard({
-        id: parseInt(cardid, 10)
+        id: parseInt(cardid, 10),
       });
     })
     .filter(card => card);
@@ -126,7 +124,7 @@ function deepShuffle(array) {
     // And swap it with the current element.
     [array[currentIndex], array[randomIndex]] = [
       array[randomIndex],
-      array[currentIndex]
+      array[currentIndex],
     ];
   }
 
@@ -142,7 +140,7 @@ function drawFive(deck) {
   const hand = deck.slice(0, 5);
   return {
     hand,
-    deck
+    deck,
   };
 }
 
@@ -150,7 +148,7 @@ function drawSix(deck) {
   const hand = deck.slice(0, 6);
   return {
     hand,
-    deck
+    deck,
   };
 }
 
@@ -230,11 +228,11 @@ function identifyStarter(hand) {
   return index !== -1
     ? {
         starter: true,
-        index
+        index,
       }
     : {
         starter: false,
-        index
+        index,
       };
 }
 
@@ -249,7 +247,7 @@ function getStarter(hand) {
   return {
     starter: true,
     card: starter,
-    hand
+    hand,
   };
 }
 
@@ -284,6 +282,14 @@ function containsCyberdarkClaw(hand) {
   });
 }
 
+function containsExtraCyberdark(hand) {
+  const cybers = hand.filter(card => filterSetcode(card, CYBER_ARCHETYPE));
+  const cyberdarks = hand.filter(card =>
+    filterSetcode(card, CYBERDARK_ARCHETYPE)
+  );
+  return cybers.legnth >= 2 && cyberdarks.legnth;
+}
+
 function canComboCyberEndDragonWithCore(list) {
   const { hand: initialHand, deck } = drawFive(list.main);
   const { starter, card, hand: handSansStarter } = getStarter(initialHand);
@@ -292,7 +298,11 @@ function canComboCyberEndDragonWithCore(list) {
     return false;
   }
 
-  if (card.id === CYBER_DRAGON_CORE || card.id === CYBER_EMERGENCY || card.id === CYBERNETIC_HORIZON) {
+  if (
+    card.id === CYBER_DRAGON_CORE ||
+    card.id === CYBER_EMERGENCY ||
+    card.id === CYBERNETIC_HORIZON
+  ) {
     const isPowerBondInDeck = checkPowerBond(deck);
     const hasSpellTrap = containsSpellOrTrap(handSansStarter);
     const hasSpareCyber = containsCyberMonster(handSansStarter);
@@ -303,12 +313,12 @@ function canComboCyberEndDragonWithCore(list) {
   if (card.id === CYBERDARK_REALM) {
     const isPowerBondInDeck = checkPowerBond(deck);
     const hasSpellTrap = containsSpellOrTrap(handSansStarter);
-    const hasCyberdarkClaw = containsCyberdarkClaw(handSansStarter);
+    const hasSpareCyber =
+      containsCyberdarkClaw(handSansStarter) || containsExtraCyberdark(handSansStarter);
 
-    return isPowerBondInDeck && hasSpellTrap && hasCyberdarkClaw;
+    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
   }
 }
-
 
 async function testCyberEndDragonWithCore(fileName, tries = 250) {
   const file = await readDeckFromFile(fileName);
@@ -329,7 +339,7 @@ async function testCyberEndDragonWithCore(fileName, tries = 250) {
   return {
     successes,
     failures,
-    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`
+    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`,
   };
 }
 
@@ -339,10 +349,11 @@ async function main() {
   program.parse();
 
   const options = program.opts();
-  const { successes, failures, percentage: CyberdarkEndDragonPercentage } = await testCyberEndDragonWithCore(
-    options.deck,
-    options.tries
-  );
+  const {
+    successes,
+    failures,
+    percentage: CyberdarkEndDragonPercentage,
+  } = await testCyberEndDragonWithCore(options.deck, options.tries);
 
   console.log('Cyberdark End Dragon', CyberdarkEndDragonPercentage);
 }
