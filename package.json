@@ -1,0 +1,18 @@
+{
+  "name": "cyberdark",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Zayelion <panthrowzay@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^9.0.0",
+    "prettier": "^2.5.1"
+  },
+  "prettier": {
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "maxWidth": 180,
+    "semi": true,
+    "singleQuote": true
+  }
+}
