@@ -17,6 +17,7 @@ const {
 
 const loadedDatabase = require('./database.json');
 
+
 function reduceCardDB(hash, item) {
   item.links = item.links || [];
   if (item.type === 16401) {
@@ -263,16 +264,17 @@ function checkPowerBond(deck) {
   });
 }
 
-function containsCyberMonster(hand) {
-  return hand.some(card => {
-    const isMachineOrDragon = isType(card, MACHINE) || isType(card, DRAGON);
-    const isCyberArchetype = filterSetcode(card, CYBER_ARCHETYPE);
-    const isMonster = cardIs('Monster', card);
+function checkIsFormOfCyber(card, archetype) {
+  const isMachineOrDragon = isType(card, MACHINE) || isType(card, DRAGON);
+  const isCyberArchetype = filterSetcode(card, archetype);
+  const isMonster = cardIs('Monster', card);
 
-    return (
-      (isMonster && isMachineOrDragon && isCyberArchetype) ||
-      card.id === CYBER_EMERGENCY
-    );
+  return isMonster && isMachineOrDragon && isCyberArchetype;
+}
+
+function containsCyberMonster(hand, archetype) {
+  return hand.some(card => {
+    return checkIsFormOfCyber(card, archetype) || card.id === CYBER_EMERGENCY;
   });
 }
 
@@ -285,7 +287,7 @@ function containsCyberdarkClaw(hand) {
 function containsExtraCyberdark(hand) {
   const cybers = hand.filter(card => filterSetcode(card, CYBER_ARCHETYPE));
   const cyberdarks = hand.filter(card =>
-    filterSetcode(card, CYBERDARK_ARCHETYPE)
+    checkIsFormOfCyber(card, CYBERDARK_ARCHETYPE)
   );
   return cybers.legnth >= 2 && cyberdarks.legnth;
 }
@@ -305,7 +307,10 @@ function canComboCyberEndDragonWithCore(list) {
   ) {
     const isPowerBondInDeck = checkPowerBond(deck);
     const hasSpellTrap = containsSpellOrTrap(handSansStarter);
-    const hasSpareCyber = containsCyberMonster(handSansStarter);
+    const hasSpareCyber = containsCyberMonster(
+      handSansStarter,
+      CYBER_ARCHETYPE
+    );
 
     return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
   }
@@ -314,7 +319,8 @@ function canComboCyberEndDragonWithCore(list) {
     const isPowerBondInDeck = checkPowerBond(deck);
     const hasSpellTrap = containsSpellOrTrap(handSansStarter);
     const hasSpareCyber =
-      containsCyberdarkClaw(handSansStarter) || containsExtraCyberdark(handSansStarter);
+      containsCyberdarkClaw(handSansStarter) ||
+      containsExtraCyberdark(handSansStarter);
 
     return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
   }
