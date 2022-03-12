@@ -13,7 +13,7 @@ const {
   CYBER_ARCHETYPE,
   CYBERDARK_ARCHETYPE,
   MACHINE,
-  DRAGON,
+  DRAGON
 } = require('./keyCards.json');
 
 const loadedDatabase = require('./database.json');
@@ -50,7 +50,7 @@ function makeDeckfromydk(ydkFileContents) {
     originalValues = {
       main: [],
       side: [],
-      extra: [],
+      extra: []
     },
     current = '';
   lineSplit = lineSplit.map(function(item) {
@@ -83,21 +83,21 @@ function importDeck(file) {
   deck.main = deck.main
     .map(cardid => {
       return findcard({
-        id: parseInt(cardid, 10),
+        id: parseInt(cardid, 10)
       });
     })
     .filter(card => card);
   deck.side = deck.side
     .map(cardid => {
       return findcard({
-        id: parseInt(cardid, 10),
+        id: parseInt(cardid, 10)
       });
     })
     .filter(card => card);
   deck.extra = deck.extra
     .map(cardid => {
       return findcard({
-        id: parseInt(cardid, 10),
+        id: parseInt(cardid, 10)
       });
     })
     .filter(card => card);
@@ -125,7 +125,7 @@ function deepShuffle(array) {
     // And swap it with the current element.
     [array[currentIndex], array[randomIndex]] = [
       array[randomIndex],
-      array[currentIndex],
+      array[currentIndex]
     ];
   }
 
@@ -136,21 +136,24 @@ function deepShuffle(array) {
 
 function drawFive(deck) {
   deepShuffle(deck);
-  deepShuffle(deck);
-
   const hand = deck.slice(0, 5);
   return {
     hand,
-    deck,
+    deck
   };
 }
 
 function drawSix(deck) {
+  deepShuffle(deck);
   const hand = deck.slice(0, 6);
   return {
     hand,
-    deck,
+    deck
   };
+}
+
+function draw(deck, goSecond) {
+  return goSecond ? drawSix(deck) : drawFive(deck);
 }
 
 // test if it combos into CDED
@@ -229,11 +232,11 @@ function identifyStarter(hand) {
   return index !== -1
     ? {
         starter: true,
-        index,
+        index
       }
     : {
         starter: false,
-        index,
+        index
       };
 }
 
@@ -248,9 +251,10 @@ function getStarter(hand) {
   return {
     starter: true,
     card: starter,
-    hand,
+    hand
   };
 }
+
 
 function containsSpellOrTrap(hand) {
   return hand.some(card => {
@@ -286,7 +290,12 @@ function containsCyberdarkClaw(hand) {
 
 function containsPseudoComponents(hand) {
   return hand.some(card => {
-    return card.id === CYBERDARK_CLAW || card.id === CYBERNETIC_HORIZON || card.id === CYBERDARK_REALM || card.id === CYBERDARK_CANNON;
+    return (
+      card.id === CYBERDARK_CLAW ||
+      card.id === CYBERNETIC_HORIZON ||
+      card.id === CYBERDARK_REALM ||
+      card.id === CYBERDARK_CANNON
+    );
   });
 }
 
@@ -337,8 +346,8 @@ function canPseudoCombo(starter, deck, hand) {
   return false;
 }
 
-function canComboCyberEndDragonWithCore(list) {
-  const { hand: initialHand, deck } = drawFive(list.main);
+function canComboCyberEndDragonWithCore(list, goSecond) {
+  const { hand: initialHand, deck } = drawFive(list.main, goSecond);
   const { starter, card, hand: handSansStarter } = getStarter(initialHand);
 
   if (!starter) {
@@ -352,7 +361,7 @@ function canComboCyberEndDragonWithCore(list) {
   return hasSiegerCombo || hasClawCombo || hasPseudoCombo;
 }
 
-async function testCyberEndDragonWithCore(fileName, tries = 250) {
+async function testCyberdarkEndDragon(fileName, goSecond, tries = 250) {
   const file = await readDeckFromFile(fileName);
   const deck = importDeck(file);
 
@@ -360,7 +369,7 @@ async function testCyberEndDragonWithCore(fileName, tries = 250) {
   let failures = 0;
 
   for (let i = 0; i < tries; i++) {
-    const madeCombo = canComboCyberEndDragonWithCore(deck);
+    const madeCombo = canComboCyberEndDragonWithCore(deck, goSecond);
     if (madeCombo) {
       successes++;
     } else {
@@ -371,23 +380,69 @@ async function testCyberEndDragonWithCore(fileName, tries = 250) {
   return {
     successes,
     failures,
-    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`,
+    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`
+  };
+}
+
+async function canComboCyberFusionDragon(list, goSecond) {
+  const { hand: initialHand, deck } = draw(list.main, goSecond);
+  const { starter, card, hand: handSansStarter } = getStarter(initialHand);
+  
+  if (!starter) {
+    return false;
+  }
+
+  const isPowerBondInDeck = checkPowerBond(deck);
+  const hasSpellTrap = containsSpellOrTrap(handSansStarter);
+  
+  return isPowerBondInDeck && hasSpellTrap;
+
+}
+
+async function testCyberFusionDragon(fileName, goSecond, tries = 250) {
+  const file = await readDeckFromFile(fileName);
+  const deck = importDeck(file);
+
+  let successes = 0;
+  let failures = 0;
+
+  for (let i = 0; i < tries; i++) {
+    const madeCombo = await canComboCyberFusionDragon(deck, goSecond);
+    if (madeCombo) {
+      successes++;
+    } else {
+      failures++;
+    }
+  }
+
+  return {
+    successes,
+    failures,
+    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`
   };
 }
 
 async function main() {
   program.option('-d, --deck <char>', 'file name of deck to analyze');
   program.option('-t, --tries <number>', 'number of times to test');
+  program.option('-s, --go-second', 'optionally go second');
   program.parse();
 
   const options = program.opts();
-  const {
-    successes,
-    failures,
-    percentage: CyberdarkEndDragonPercentage,
-  } = await testCyberEndDragonWithCore(options.deck, options.tries);
-
+  const { percentage: CyberdarkEndDragonPercentage } = await testCyberdarkEndDragon(
+    options.deck,
+    options.goSecond,
+    options.tries
+  );
   console.log('Cyberdark End Dragon', CyberdarkEndDragonPercentage);
+
+
+  const {
+    percentage:FusionPercentage
+  } = await testCyberFusionDragon(options.deck, options.goSecond, options.tries);
+
+  
+  console.log('Any Fusion Monster', FusionPercentage);
 }
 
 main();
