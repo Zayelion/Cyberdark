@@ -1,5 +1,4 @@
 const fs = require('fs').promises;
-const path = require('path');
 const { program } = require('commander');
 
 const {
@@ -12,28 +11,12 @@ const {
   CYBERDARK_CANNON,
   CYBER_ARCHETYPE,
   CYBERDARK_ARCHETYPE,
+  FUSION_CONSCRIPTION,
   MACHINE,
-  DRAGON
+  DRAGON,
 } = require('./keyCards.json');
 
 const loadedDatabase = require('./database.json');
-
-function reduceCardDB(hash, item) {
-  item.links = item.links || [];
-  if (item.type === 16401) {
-    // no token packs
-    return hash;
-  }
-  if (item.ocg && item.ocg.pack) {
-    item.ocg.pack = item.ocg.pack.trim();
-    hash[item.ocg.pack] = 0;
-  }
-  if (item.tcg && item.tcg.pack) {
-    item.tcg.pack = item.tcg.pack.trim();
-    hash[item.tcg.pack] = 0;
-  }
-  return hash;
-}
 
 // get deck
 
@@ -42,7 +25,7 @@ async function readDeckFromFile(file) {
 }
 
 function findcard(card) {
-  return loadedDatabase.find(item => card.id === item.id);
+  return loadedDatabase.find((item) => card.id === item.id);
 }
 
 function makeDeckfromydk(ydkFileContents) {
@@ -50,14 +33,14 @@ function makeDeckfromydk(ydkFileContents) {
     originalValues = {
       main: [],
       side: [],
-      extra: []
+      extra: [],
     },
     current = '';
-  lineSplit = lineSplit.map(function(item) {
+  lineSplit = lineSplit.map(function (item) {
     return item.trim();
   });
   try {
-    lineSplit.forEach(function(value) {
+    lineSplit.forEach(function (value) {
       if (value === '') {
         return;
       }
@@ -81,26 +64,26 @@ function importDeck(file) {
   var deck = makeDeckfromydk(file);
 
   deck.main = deck.main
-    .map(cardid => {
+    .map((cardid) => {
       return findcard({
-        id: parseInt(cardid, 10)
+        id: parseInt(cardid, 10),
       });
     })
-    .filter(card => card);
+    .filter((card) => card);
   deck.side = deck.side
-    .map(cardid => {
+    .map((cardid) => {
       return findcard({
-        id: parseInt(cardid, 10)
+        id: parseInt(cardid, 10),
       });
     })
-    .filter(card => card);
+    .filter((card) => card);
   deck.extra = deck.extra
-    .map(cardid => {
+    .map((cardid) => {
       return findcard({
-        id: parseInt(cardid, 10)
+        id: parseInt(cardid, 10),
       });
     })
-    .filter(card => card);
+    .filter((card) => card);
 
   return deck;
 }
@@ -125,7 +108,7 @@ function deepShuffle(array) {
     // And swap it with the current element.
     [array[currentIndex], array[randomIndex]] = [
       array[randomIndex],
-      array[currentIndex]
+      array[currentIndex],
     ];
   }
 
@@ -139,7 +122,7 @@ function drawFive(deck) {
   const hand = deck.slice(0, 5);
   return {
     hand,
-    deck
+    deck,
   };
 }
 
@@ -148,7 +131,7 @@ function drawSix(deck) {
   const hand = deck.slice(0, 6);
   return {
     hand,
-    deck
+    deck,
   };
 }
 
@@ -222,7 +205,7 @@ function isType(card, type) {
 
 function identifyStarter(hand) {
   const index = hand.findIndex(
-    card =>
+    (card) =>
       card.id === CYBER_DRAGON_CORE ||
       card.id === CYBER_EMERGENCY ||
       card.id === CYBERDARK_REALM ||
@@ -232,11 +215,11 @@ function identifyStarter(hand) {
   return index !== -1
     ? {
         starter: true,
-        index
+        index,
       }
     : {
         starter: false,
-        index
+        index,
       };
 }
 
@@ -251,19 +234,18 @@ function getStarter(hand) {
   return {
     starter: true,
     card: starter,
-    hand
+    hand,
   };
 }
 
-
 function containsSpellOrTrap(hand) {
-  return hand.some(card => {
+  return hand.some((card) => {
     return cardIs('spell', card) || cardIs('trap', card);
   });
 }
 
 function checkPowerBond(deck) {
-  return deck.some(card => {
+  return deck.some((card) => {
     return card.id === POWER_BOND;
   });
 }
@@ -277,31 +259,36 @@ function checkIsFormOfCyber(card, archetype) {
 }
 
 function containsCyberMonster(hand, archetype) {
-  return hand.some(card => {
-    return checkIsFormOfCyber(card, archetype) || card.id === CYBER_EMERGENCY;
+  return hand.filter((card) => {
+    return (
+      checkIsFormOfCyber(card, archetype) ||
+      card.id === CYBER_EMERGENCY ||
+      card.id === FUSION_CONSCRIPTION
+    );
   });
 }
 
 function containsCyberdarkClaw(hand) {
-  return hand.some(card => {
+  return hand.some((card) => {
     return card.id === CYBERDARK_CLAW;
   });
 }
 
 function containsPseudoComponents(hand) {
-  return hand.some(card => {
+  return hand.some((card) => {
     return (
       card.id === CYBERDARK_CLAW ||
       card.id === CYBERNETIC_HORIZON ||
       card.id === CYBERDARK_REALM ||
-      card.id === CYBERDARK_CANNON
+      card.id === CYBERDARK_CANNON ||
+      card.id === FUSION_CONSCRIPTION
     );
   });
 }
 
 function containsExtraCyberdark(hand) {
-  const cybers = hand.filter(card => filterSetcode(card, CYBER_ARCHETYPE));
-  const cyberdarks = hand.filter(card =>
+  const cybers = hand.filter((card) => filterSetcode(card, CYBER_ARCHETYPE));
+  const cyberdarks = hand.filter((card) =>
     checkIsFormOfCyber(card, CYBERDARK_ARCHETYPE)
   );
   return cybers.legnth >= 2 && cyberdarks.legnth;
@@ -314,51 +301,40 @@ function canSiegerCombo(starter, deck, hand) {
     starter.id === CYBERNETIC_HORIZON
   ) {
     const isPowerBondInDeck = checkPowerBond(deck);
-    const hasSpellTrap = containsSpellOrTrap(hand);
     const hasSpareCyber = containsCyberMonster(hand, CYBER_ARCHETYPE);
-
-    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
-  }
-  return false;
-}
-
-function canClawCombo(starter, deck, hand) {
-  if (starter.id === CYBERDARK_REALM) {
-    const isPowerBondInDeck = checkPowerBond(deck);
     const hasSpellTrap = containsSpellOrTrap(hand);
-    const hasSpareCyber =
-      containsCyberdarkClaw(hand) || containsExtraCyberdark(hand);
 
     return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
   }
   return false;
 }
 
-function canPseudoCombo(starter, deck, hand) {
-  if (starter.id === CYBER_DRAGON_CORE || starter.id === CYBER_EMERGENCY) {
-    const isPowerBondInDeck = checkPowerBond(deck);
-    const hasSpellTrap = containsSpellOrTrap(hand);
-    const hasSpareCyber = containsPseudoComponents(hand);
+function canCombo( deck, hand) {
+  const isPowerBondInDeck = checkPowerBond(deck);
+  const hasSpareCyber =
+    containsCyberdarkClaw(hand) || containsExtraCyberdark(hand);
+  const hasSpellTrap = containsSpellOrTrap(hand);
 
-    return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
-  }
-
-  return false;
+  return isPowerBondInDeck && hasSpellTrap && hasSpareCyber;
 }
+
 
 function canComboCyberEndDragonWithCore(list, goSecond) {
   const { hand: initialHand, deck } = drawFive(list.main, goSecond);
   const { starter, card, hand: handSansStarter } = getStarter(initialHand);
+
+  initialHand.sort((current, next) => {
+    return Number(isType(current, 'monster')) + Number(isType(next, 'monster'));
+  });
 
   if (!starter) {
     return false;
   }
 
   const hasSiegerCombo = canSiegerCombo(card, deck, handSansStarter);
-  const hasClawCombo = canClawCombo(card, deck, handSansStarter);
-  const hasPseudoCombo = canPseudoCombo(card, deck, handSansStarter);
+  const hasCyberdarkEndDragonCombo = canCombo( deck, handSansStarter);
 
-  return hasSiegerCombo || hasClawCombo || hasPseudoCombo;
+  return hasSiegerCombo || hasCyberdarkEndDragonCombo;
 }
 
 async function testCyberdarkEndDragon(fileName, goSecond, tries = 250) {
@@ -380,23 +356,22 @@ async function testCyberdarkEndDragon(fileName, goSecond, tries = 250) {
   return {
     successes,
     failures,
-    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`
+    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`,
   };
 }
 
 async function canComboCyberFusionDragon(list, goSecond) {
   const { hand: initialHand, deck } = draw(list.main, goSecond);
   const { starter, card, hand: handSansStarter } = getStarter(initialHand);
-  
+
   if (!starter) {
     return false;
   }
 
   const isPowerBondInDeck = checkPowerBond(deck);
   const hasSpellTrap = containsSpellOrTrap(handSansStarter);
-  
-  return isPowerBondInDeck && hasSpellTrap;
 
+  return isPowerBondInDeck && hasSpellTrap;
 }
 
 async function testCyberFusionDragon(fileName, goSecond, tries = 250) {
@@ -418,7 +393,7 @@ async function testCyberFusionDragon(fileName, goSecond, tries = 250) {
   return {
     successes,
     failures,
-    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`
+    percentage: `${Number((successes / tries) * 100).toFixed(2)}%`,
   };
 }
 
@@ -429,19 +404,16 @@ async function main() {
   program.parse();
 
   const options = program.opts();
-  const { percentage: CyberdarkEndDragonPercentage } = await testCyberdarkEndDragon(
+  const { percentage: CyberdarkEndDragonPercentage } =
+    await testCyberdarkEndDragon(options.deck, options.goSecond, options.tries);
+  console.log('Cyberdark End Dragon', CyberdarkEndDragonPercentage);
+
+  const { percentage: FusionPercentage } = await testCyberFusionDragon(
     options.deck,
     options.goSecond,
     options.tries
   );
-  console.log('Cyberdark End Dragon', CyberdarkEndDragonPercentage);
 
-
-  const {
-    percentage:FusionPercentage
-  } = await testCyberFusionDragon(options.deck, options.goSecond, options.tries);
-
-  
   console.log('Any Fusion Monster', FusionPercentage);
 }
 
